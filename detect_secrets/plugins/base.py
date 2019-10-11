@@ -72,7 +72,7 @@ class BasePlugin(object):
         if name.endswith('Detector'):
             name = name[:-len('Detector')]
 
-        # turn camel case into hyphenated strings
+        # Turn camel case into hyphenated strings
         name_hyphen = ''
         for letter in name:
             if letter.upper() == letter and name_hyphen:
