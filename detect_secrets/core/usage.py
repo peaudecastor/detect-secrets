@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import argparse
+import os
 from collections import namedtuple
 
 from detect_secrets import VERSION
@@ -27,6 +28,26 @@ def add_word_list_argument(parser):
     )
 
 
+def add_custom_plugins_argument(parser):
+    parser.add_argument(
+        '--custom-plugins',
+        action='append',
+        default=[],
+        dest='custom_plugin_paths',
+        help='Paths containing custom plugin Python files, not searched recursively.',
+        type=_is_valid_path,
+    )
+
+
+def _is_valid_path(path):  # pragma: no cover
+    if not os.path.exists(path):
+        raise argparse.ArgumentTypeError(
+            'Invalid path: {}'.format(path),
+        )
+
+    return path
+
+
 def add_use_all_plugins_argument(parser):
     parser.add_argument(
         '--use-all-plugins',
@@ -44,6 +65,36 @@ def add_no_verify_flag(parser):
     )
 
 
+def add_shared_arguments(parser):
+    """
+    These are arguments that are for both
+    pre-commit and regular detect-secrets scripts.
+    """
+    add_exclude_lines_argument(parser)
+    add_word_list_argument(parser)
+    add_custom_plugins_argument(parser)
+    add_use_all_plugins_argument(parser)
+    add_no_verify_flag(parser)
+
+
+def get_parser_to_add_opt_out_options_to(parser):
+    """
+    The pre-commit hook gets e.g. `--no-jwt-scan` type options
+    as well as the subparser for `detect-secrets scan`.
+
+    :rtype: argparse.ArgumentParser
+    :returns: argparse.ArgumentParser to pass into PluginOptions
+    """
+    if parser.prog == 'detect-secrets-hook':
+        return parser
+
+    for action in parser._actions:  # pragma: no cover (Always returns)
+        if isinstance(action, argparse._SubParsersAction):
+            for subparser in action.choices.values():
+                if subparser.prog.endswith('detect-secrets scan'):
+                    return subparser
+
+
 class ParserBuilder(object):
 
     def __init__(self):
@@ -59,10 +110,7 @@ class ParserBuilder(object):
         self._add_filenames_argument()\
             ._add_set_baseline_argument()\
 
-        add_exclude_lines_argument(self.parser)
-        add_word_list_argument(self.parser)
-        add_use_all_plugins_argument(self.parser)
-        add_no_verify_flag(self.parser)
+        add_shared_arguments(self.parser)
 
         PluginOptions(self.parser).add_arguments()
 
@@ -79,10 +127,36 @@ class ParserBuilder(object):
         return self
 
     def parse_args(self, argv):
-        output = self.parser.parse_args(argv)
-        PluginOptions.consolidate_args(output)
+        # We temporarily remove '--help' so that we can give the full
+        # amount of options after loading custom plugins.
+        argv_without_help = list(
+            filter(
+                lambda arg: (
+                    arg not in ('-h', '--help')
+                ),
+                argv,
+            ),
+        )
+        known_args, _ = self.parser.parse_known_args(
+            args=argv_without_help,
+        )
 
-        return output
+        # Audit does not use --custom-plugins
+        if hasattr(known_args, 'custom_plugin_paths'):
+            # Add e.g. `--no-jwt-scan` type options
+            # now that we can use the --custom-plugins argument
+            PluginOptions(
+                get_parser_to_add_opt_out_options_to(self.parser),
+            ).add_opt_out_options(
+                known_args.custom_plugin_paths,
+            )
+
+        args = self.parser.parse_args(
+            args=argv,
+        )
+        PluginOptions.consolidate_args(args)
+
+        return args
 
     def _add_version_argument(self):
         self.parser.add_argument(
@@ -146,10 +220,7 @@ class ScanOptions(object):
             ),
         )
 
-        # Pairing `--exclude-lines` and `--word-list` to
-        # both pre-commit and `--scan` because it can be used for both.
-        add_exclude_lines_argument(self.parser)
-        add_word_list_argument(self.parser)
+        add_shared_arguments(self.parser)
 
         # Pairing `--exclude-files` with `--scan` because it's only used for the initialization.
         # The pre-commit hook framework already has an `exclude` option that can
@@ -170,17 +241,11 @@ class ScanOptions(object):
             dest='import_filename',
         )
 
-        # Pairing `--update` with `--use-all-plugins` to overwrite plugins list
-        # from baseline
-        add_use_all_plugins_argument(self.parser)
-
         self.parser.add_argument(
             '--all-files',
             action='store_true',
             help='Scan all files recursively (as compared to only scanning git tracked files).',
         )
-
-        add_no_verify_flag(self.parser)
 
         return self
 
@@ -312,10 +377,7 @@ class PluginDescriptor(
 
 class PluginOptions(object):
 
-    all_plugins = [
-        PluginDescriptor.from_plugin_class(plugin, name)
-        for name, plugin in import_plugins().items()
-    ]
+    _all_plugins = None
 
     def __init__(self, parser):
         self.parser = parser.add_argument_group(
@@ -329,16 +391,27 @@ class PluginOptions(object):
 
     def add_arguments(self):
         self._add_custom_limits()
-        self._add_opt_out_options()
         self._add_keyword_exclude()
 
         return self
+
+    @classmethod
+    def get_all_plugins(cls, custom_plugin_paths):
+        if cls._all_plugins:
+            return cls._all_plugins
+
+        cls._all_plugins = [
+            PluginDescriptor.from_plugin_class(plugin, name)
+            for name, plugin in
+            import_plugins(custom_plugin_paths).items()
+        ]
+        return cls._all_plugins
 
     @staticmethod
     def get_disabled_plugins(args):
         return [
             plugin.classname
-            for plugin in PluginOptions.all_plugins
+            for plugin in PluginOptions.get_all_plugins(args.custom_plugin_paths)
             if plugin.classname not in args.plugins
         ]
 
@@ -362,7 +435,7 @@ class PluginOptions(object):
         active_plugins = {}
         is_using_default_value = {}
 
-        for plugin in PluginOptions.all_plugins:
+        for plugin in PluginOptions.get_all_plugins(args.custom_plugin_paths):
             arg_name = PluginOptions._convert_flag_text_to_argument_name(
                 plugin.disable_flag_text,
             )
@@ -415,8 +488,8 @@ class PluginOptions(object):
             help=high_entropy_help_text + 'defaults to 3.0.',
         )
 
-    def _add_opt_out_options(self):
-        for plugin in self.all_plugins:
+    def add_opt_out_options(self, custom_plugin_paths):
+        for plugin in self.get_all_plugins(custom_plugin_paths):
             self.parser.add_argument(
                 plugin.disable_flag_text,
                 action='store_true',

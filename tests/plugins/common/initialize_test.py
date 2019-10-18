@@ -12,7 +12,8 @@ class TestFromPluginClassname(object):
 
     def test_success(self):
         plugin = initialize.from_plugin_classname(
-            'HexHighEntropyString',
+            plugin_classname='HexHighEntropyString',
+            custom_plugin_paths=[],
             hex_limit=4,
         )
 
@@ -22,7 +23,8 @@ class TestFromPluginClassname(object):
     def test_fails_if_not_base_plugin(self):
         with pytest.raises(TypeError):
             initialize.from_plugin_classname(
-                'log',
+                plugin_classname='NotABasePlugin',
+                custom_plugin_paths=[],
             )
 
     def test_fails_on_bad_initialization(self):
@@ -34,7 +36,8 @@ class TestFromPluginClassname(object):
             TypeError,
         ):
             initialize.from_plugin_classname(
-                'HexHighEntropyString',
+                plugin_classname='HexHighEntropyString',
+                custom_plugin_paths=[],
                 hex_limit=4,
             )
 
@@ -42,7 +45,7 @@ class TestFromPluginClassname(object):
 class TestFromSecretType(object):
 
     def setup(self):
-        self.settings = [
+        self.plugins_used = [
             {
                 'name': 'Base64HighEntropyString',
                 'base64_limit': 3,
@@ -55,7 +58,8 @@ class TestFromSecretType(object):
     def test_success(self):
         plugin = initialize.from_secret_type(
             'Base64 High Entropy String',
-            settings=self.settings,
+            plugins_used=self.plugins_used,
+            custom_plugin_paths=[],
         )
 
         assert isinstance(plugin, Base64HighEntropyString)
@@ -64,11 +68,13 @@ class TestFromSecretType(object):
     def test_failure(self):
         assert not initialize.from_secret_type(
             'some random secret_type',
-            settings=self.settings,
+            plugins_used=self.plugins_used,
+            custom_plugin_paths=[],
         )
 
     def test_secret_type_not_in_settings(self):
         assert not initialize.from_secret_type(
             'Base64 High Entropy String',
-            settings=[],
+            plugins_used=[],
+            custom_plugin_paths=[],
         )

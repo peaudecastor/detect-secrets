@@ -14,18 +14,27 @@ from testing.mocks import mock_git_calls
 from testing.mocks import mock_log as mock_log_base
 from testing.mocks import SubprocessMock
 from testing.util import get_regex_based_plugins
+from testing.util import parse_pre_commit_args_with_correct_prog
+
+
+def call_pre_commit_hook(command):
+    with mock.patch(
+        'detect_secrets.pre_commit_hook.parse_args',
+        return_value=parse_pre_commit_args_with_correct_prog(command),
+    ):
+        return pre_commit_hook.main(command.split())
 
 
 def assert_commit_blocked(command):
-    assert pre_commit_hook.main(command.split()) == 1
+    assert call_pre_commit_hook(command) == 1
 
 
 def assert_commit_blocked_with_diff_exit_code(command):
-    assert pre_commit_hook.main(command.split()) == 3
+    assert call_pre_commit_hook(command) == 3
 
 
 def assert_commit_succeeds(command):
-    assert pre_commit_hook.main(command.split()) == 0
+    assert call_pre_commit_hook(command) == 0
 
 
 class TestPreCommitHook(object):

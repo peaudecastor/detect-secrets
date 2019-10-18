@@ -243,6 +243,7 @@ class TestAuditBaseline(object):
     @property
     def baseline(self):
         return {
+            'custom_plugin_paths': (),
             'generated_at': 'some timestamp',
             'plugins_used': [
                 {
@@ -275,6 +276,7 @@ class TestAuditBaseline(object):
     @property
     def leapfrog_baseline(self):
         return {
+            'custom_plugin_paths': (),
             'generated_at': 'some timestamp',
             'plugins_used': [
                 {
@@ -400,6 +402,7 @@ class TestCompareBaselines(object):
     @property
     def old_baseline(self):
         return {
+            'custom_plugin_paths': (),
             'plugins_used': [
                 {
                     'name': 'Base64HighEntropyString',
@@ -444,6 +447,7 @@ class TestCompareBaselines(object):
     @property
     def new_baseline(self):
         return {
+            'custom_plugin_paths': (),
             'plugins_used': [
                 {
                     'name': 'Base64HighEntropyString',
@@ -527,6 +531,7 @@ class TestDetermineAuditResults(object):
         audited.
         """
         baseline_fixture = {
+            'custom_plugin_paths': (),
             'plugins_used': plugins_used,
             'results': {
                 'mocked_file': [
@@ -668,9 +673,11 @@ class TestDetermineAuditResults(object):
             return_value=whole_plaintext_line,
             autospec=True,
         ):
-            results = audit.determine_audit_results(baseline, '.secrets.baseline')
+            display_results = audit.determine_audit_results(baseline, '.secrets.baseline')
 
-        hex_high_results = results['plugins']['HexHighEntropyString']['results']
+        assert display_results['stats']['signal'] == '100.00%'
+
+        hex_high_results = display_results['plugins']['HexHighEntropyString']['results']
         assert len(hex_high_results['true-positives']['mocked_file']) == 1
         assert hex_high_results['true-positives']['mocked_file'][0]['line'] == whole_plaintext_line
         assert hex_high_results['true-positives']['mocked_file'][0]['plaintext'] is None
@@ -730,9 +737,9 @@ class TestPrintContext(object):
         self,
         secret=None,
         secret_lineno=15,
-        settings=None,
+        plugins_used=None,
         should_find_secret=True,
-        force=False,
+        force_line_printing=False,
     ):
         # Setup default arguments
         if not secret:
@@ -743,8 +750,8 @@ class TestPrintContext(object):
                 lineno=secret_lineno,
             )
 
-        if not settings:
-            settings = [
+        if not plugins_used:
+            plugins_used = [
                 {
                     'name': 'PrivateKeyDetector',
                 },
@@ -756,12 +763,13 @@ class TestPrintContext(object):
             should_find_secret,
         ):
             audit._print_context(
-                secret.filename,
-                secret.json(),
+                filename=secret.filename,
+                secret=secret.json(),
+                custom_plugin_paths=[],
                 count=1,
                 total=2,
-                plugin_settings=settings,
-                force=force,
+                plugins_used=plugins_used,
+                force_line_printing=force_line_printing,
             )
 
     @contextmanager
@@ -868,7 +876,7 @@ class TestPrintContext(object):
                     lineno=15,
                 ),
                 should_find_secret=False,
-                force=False,
+                force_line_printing=False,
             )
 
         assert uncolor(mock_printer.message) == textwrap.dedent("""
@@ -894,7 +902,7 @@ class TestPrintContext(object):
                     lineno=15,
                 ),
                 should_find_secret=False,
-                force=True,
+                force_line_printing=True,
             )
 
         assert uncolor(mock_printer.message) == textwrap.dedent("""
@@ -928,7 +936,7 @@ class TestPrintContext(object):
                     secret='123456789a',
                     lineno=15,
                 ),
-                settings=[
+                plugins_used=[
                     {
                         'name': 'HexHighEntropyString',
                         'hex_limit': 3,
@@ -967,7 +975,7 @@ class TestPrintContext(object):
                     secret='yerba',
                     lineno=15,
                 ),
-                settings=[
+                plugins_used=[
                     {
                         'name': 'KeywordDetector',
                     },
@@ -1004,7 +1012,7 @@ class TestPrintContext(object):
                 secret='ToCynx5Se4e2PtoZxEhW7lUJcOX15c54',
                 lineno=10,
             ),
-            settings=[
+            plugins_used=[
                 {
                     'base64_limit': 4.5,
                     'name': 'Base64HighEntropyString',
