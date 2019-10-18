@@ -99,10 +99,30 @@ class TestAWSKeyDetector(object):
 @pytest.mark.parametrize(
     'content, expected_output',
     (
-        # No quotes
+        # Assignment with no quotes
         (
             textwrap.dedent("""
                 aws_secret_access_key = {}
+            """)[1:-1].format(
+                EXAMPLE_SECRET,
+            ),
+            [EXAMPLE_SECRET],
+        ),
+
+        # Function call arg with no quotes
+        (
+            textwrap.dedent("""
+                some_function({})
+            """)[1:-1].format(
+                EXAMPLE_SECRET,
+            ),
+            [EXAMPLE_SECRET],
+        ),
+
+        # Function call arg with comma and no quotes
+        (
+            textwrap.dedent("""
+                some_function(foo, {}, bar)
             """)[1:-1].format(
                 EXAMPLE_SECRET,
             ),
@@ -119,7 +139,27 @@ class TestAWSKeyDetector(object):
             [EXAMPLE_SECRET],
         ),
 
-        # Multiple candidates
+        # Function call arg with quotes
+        (
+            textwrap.dedent("""
+                some_function("{}")
+            """)[1:-1].format(
+                EXAMPLE_SECRET,
+            ),
+            [EXAMPLE_SECRET],
+        ),
+
+        # Function call arg with comma and quotes
+        (
+            textwrap.dedent("""
+                some_function('foo', '{}', 'bar')
+            """)[1:-1].format(
+                EXAMPLE_SECRET,
+            ),
+            [EXAMPLE_SECRET],
+        ),
+
+        # Multiple assignment with quotes candidates
         (
             textwrap.dedent("""
                 base64_keyA = '{}'
