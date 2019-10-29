@@ -152,7 +152,7 @@ def compare_baselines(old_baseline_filename, new_baseline_filename):
            This means that we won't have cases where secrets are moved around;
            only added or removed.
 
-    NOTE: We don't want to do a version check, because we want to be able to
+    Note: We don't want to do a version check, because we want to be able to
     use this functionality across versions (to see how the new version fares
     compared to the old one).
     """

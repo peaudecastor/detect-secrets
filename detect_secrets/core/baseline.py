@@ -132,7 +132,7 @@ def get_secrets_not_in_baseline(results, baseline):
 
 def trim_baseline_of_removed_secrets(results, baseline, filelist):
     """
-    NOTE: filelist is not a comprehensive list of all files in the repo
+    Note: filelist is not a comprehensive list of all files in the repo
     (because we can't be sure whether --all-files is passed in as a
     parameter to pre-commit).
 

@@ -20,7 +20,7 @@ class SecretsCollection(object):
     def __init__(
         self,
         plugins=(),
-        custom_plugin_paths=[],
+        custom_plugin_paths=None,
         exclude_files=None,
         exclude_lines=None,
         word_list_file=None,
@@ -30,7 +30,7 @@ class SecretsCollection(object):
         :type plugins: tuple of detect_secrets.plugins.base.BasePlugin
         :param plugins: rules to determine whether a string is a secret
 
-        :type custom_plugin_paths: List[str]
+        :type custom_plugin_paths: List[str]|None
         :param custom_plugin_paths: possibly empty list of paths that have custom plugins.
 
         :type exclude_files: str|None
@@ -49,7 +49,10 @@ class SecretsCollection(object):
         self.version = VERSION
 
         self.plugins = plugins
-        self.custom_plugin_paths = custom_plugin_paths
+        self.custom_plugin_paths = (
+            custom_plugin_paths if custom_plugin_paths
+            else []
+        )
         self.exclude_files = exclude_files
         self.exclude_lines = exclude_lines
         self.word_list_file = word_list_file
@@ -275,7 +278,7 @@ class SecretsCollection(object):
 
             return None
 
-        # NOTE: We can only optimize this, if we knew the type of secret.
+        # Note: We can only optimize this, if we knew the type of secret.
         # Otherwise, we need to iterate through the set and find out.
         for obj in self.data[filename]:
             if obj.secret_hash == secret:

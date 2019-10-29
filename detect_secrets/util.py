@@ -1,9 +1,15 @@
+try:
+    from functools import lru_cache
+except ImportError:  # pragma: no cover
+    from functools32 import lru_cache
+
 import hashlib
 import os
 import subprocess
 import sys
 
 
+@lru_cache(maxsize=1)
 def is_python_2():
     return sys.version_info[0] < 3
 

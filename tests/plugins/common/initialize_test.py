@@ -17,7 +17,11 @@ class TestFromPluginClassname(object):
             hex_limit=4,
         )
 
-        assert isinstance(plugin, HexHighEntropyString)
+        # Dynamically imported classes have different
+        # addresses for the same functions as statically
+        # imported classes do, so isinstance does not work.
+        assert str(plugin.__class__) == str(HexHighEntropyString)
+        assert dir(plugin.__class__) == dir(HexHighEntropyString)
         assert plugin.entropy_limit == 4
 
     def test_fails_if_not_base_plugin(self):
@@ -28,10 +32,10 @@ class TestFromPluginClassname(object):
             )
 
     def test_fails_on_bad_initialization(self):
-        with mock.patch.object(
-            HexHighEntropyString,
-            '__init__',
-            side_effect=TypeError,
+        with mock.patch(
+            'detect_secrets.plugins.common.initialize.import_plugins',
+            # Trying to instantiate str() like a plugin throws TypeError
+            return_value={'HexHighEntropyString': str},
         ), pytest.raises(
             TypeError,
         ):
@@ -61,8 +65,11 @@ class TestFromSecretType(object):
             plugins_used=self.plugins_used,
             custom_plugin_paths=[],
         )
-
-        assert isinstance(plugin, Base64HighEntropyString)
+        # Dynamically imported classes have different
+        # addresses for the same functions as statically
+        # imported classes do, so isinstance does not work.
+        assert str(plugin.__class__) == str(Base64HighEntropyString)
+        assert dir(plugin.__class__) == dir(Base64HighEntropyString)
         assert plugin.entropy_limit == 3
 
     def test_failure(self):

@@ -120,7 +120,7 @@ class HighEntropyStringsPlugin(BasePlugin):
                 filename='does_not_matter',
             )
 
-            # NOTE: Trailing space allows for nicer formatting
+            # Note: Trailing space allows for nicer formatting
             output = 'False' if not results else 'True '
             if self.regex.search(string):
                 output += ' ({})'.format(

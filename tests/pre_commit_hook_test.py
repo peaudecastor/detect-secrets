@@ -52,18 +52,64 @@ class TestPreCommitHook(object):
         assert message_by_lines[0].startswith(
             'Potential secrets about to be committed to git repo!',
         )
-        assert message_by_lines[2] == \
+        assert (
+            message_by_lines[2]
+            ==
             'Secret Type: Base64 High Entropy String'
-        assert message_by_lines[3] == \
+        )
+        assert (
+            message_by_lines[3]
+            ==
             'Location:    test_data/files/file_with_secrets.py:3'
+        )
 
     def test_file_with_secrets_with_word_list(self):
         assert_commit_succeeds(
             'test_data/files/file_with_secrets.py --word-list test_data/word_list.txt',
         )
 
-    def test_file_no_secrets(self):
+    def test_file_with_no_secrets(self):
         assert_commit_succeeds('test_data/files/file_with_no_secrets.py')
+
+    def test_file_with_custom_secrets_without_custom_plugins(self):
+        assert_commit_succeeds('test_data/files/file_with_custom_secrets.py')
+
+    def test_file_with_custom_secrets_with_custom_plugins(self, mock_log):
+        assert_commit_blocked(
+            'test_data/files/file_with_custom_secrets.py '
+            '--custom-plugins testing/custom_plugins_dir '
+            '--custom-plugins testing/hippo_plugin.py',
+        )
+
+        message_by_lines = list(
+            filter(
+                lambda x: x != '',
+                mock_log.error_messages.splitlines(),
+            ),
+        )
+        assert message_by_lines[0].startswith(
+            'Potential secrets about to be committed to git repo!',
+        )
+        assert (
+            message_by_lines[2]
+            ==
+            'Secret Type: Hippo'
+        )
+        assert (
+            message_by_lines[3]
+            ==
+            'Location:    test_data/files/file_with_custom_secrets.py:4'
+        )
+        assert (
+            message_by_lines[4]
+            ==
+            'Secret Type: Tasty Dessert'
+        )
+        assert (
+            message_by_lines[5]
+            ==
+            'Location:    test_data/files/file_with_custom_secrets.py:3'
+        )
 
     @pytest.mark.parametrize(
         'has_result, use_private_key_scan, hook_command, commit_succeeds',

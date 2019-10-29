@@ -243,7 +243,7 @@ class TestAuditBaseline(object):
     @property
     def baseline(self):
         return {
-            'custom_plugin_paths': (),
+            'custom_plugin_paths': [],
             'generated_at': 'some timestamp',
             'plugins_used': [
                 {
@@ -276,7 +276,7 @@ class TestAuditBaseline(object):
     @property
     def leapfrog_baseline(self):
         return {
-            'custom_plugin_paths': (),
+            'custom_plugin_paths': [],
             'generated_at': 'some timestamp',
             'plugins_used': [
                 {
@@ -402,7 +402,7 @@ class TestCompareBaselines(object):
     @property
     def old_baseline(self):
         return {
-            'custom_plugin_paths': (),
+            'custom_plugin_paths': [],
             'plugins_used': [
                 {
                     'name': 'Base64HighEntropyString',
@@ -447,7 +447,7 @@ class TestCompareBaselines(object):
     @property
     def new_baseline(self):
         return {
-            'custom_plugin_paths': (),
+            'custom_plugin_paths': [],
             'plugins_used': [
                 {
                     'name': 'Base64HighEntropyString',
@@ -531,7 +531,7 @@ class TestDetermineAuditResults(object):
         audited.
         """
         baseline_fixture = {
-            'custom_plugin_paths': (),
+            'custom_plugin_paths': [],
             'plugins_used': plugins_used,
             'results': {
                 'mocked_file': [

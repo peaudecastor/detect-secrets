@@ -44,7 +44,7 @@ def main(argv=sys.argv[1:]):
         automaton, word_list_hash = build_automaton(args.word_list_file)
 
     plugins = initialize.from_parser_builder(
-        args.plugins,
+        plugins_dict=args.plugins,
         custom_plugin_paths=args.custom_plugin_paths,
         exclude_lines_regex=args.exclude_lines,
         automaton=automaton,

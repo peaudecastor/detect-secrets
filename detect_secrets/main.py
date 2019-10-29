@@ -39,7 +39,7 @@ def main(argv=sys.argv[1:]):
         # Plugins are *always* rescanned with fresh settings, because
         # we want to get the latest updates.
         plugins = initialize.from_parser_builder(
-            args.plugins,
+            plugins_dict=args.plugins,
             custom_plugin_paths=args.custom_plugin_paths,
             exclude_lines_regex=args.exclude_lines,
             automaton=automaton,

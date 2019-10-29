@@ -1,11 +1,17 @@
 from __future__ import absolute_import
 
+try:
+    from functools import lru_cache
+except ImportError:  # pragma: no cover
+    from functools32 import lru_cache
+
 import argparse
 import os
 from collections import namedtuple
 
 from detect_secrets import VERSION
 from detect_secrets.plugins.common.util import import_plugins
+from detect_secrets.plugins.common.util import change_custom_plugin_paths_to_tuple
 
 
 def add_exclude_lines_argument(parser):
@@ -34,7 +40,10 @@ def add_custom_plugins_argument(parser):
         action='append',
         default=[],
         dest='custom_plugin_paths',
-        help='Paths containing custom plugin Python files, not searched recursively.',
+        help=(
+            'Custom plugin Python files, or directories containing them. '
+            'Directories are not searched recursively.'
+        ),
         type=_is_valid_path,
     )
 
@@ -128,7 +137,8 @@ class ParserBuilder(object):
 
     def parse_args(self, argv):
         # We temporarily remove '--help' so that we can give the full
-        # amount of options after loading custom plugins.
+        # amount of options (e.g. --no-custom-detector) after loading
+        # custom plugins.
         argv_without_help = list(
             filter(
                 lambda arg: (
@@ -137,11 +147,13 @@ class ParserBuilder(object):
                 argv,
             ),
         )
+
         known_args, _ = self.parser.parse_known_args(
             args=argv_without_help,
         )
 
-        # Audit does not use --custom-plugins
+        # Audit does not use the `--custom-plugins` argument
+        # It pulls custom_plugins from the audited baseline
         if hasattr(known_args, 'custom_plugin_paths'):
             # Add e.g. `--no-jwt-scan` type options
             # now that we can use the --custom-plugins argument
@@ -375,9 +387,17 @@ class PluginDescriptor(
         return 'Disables {}'.format(line)
 
 
-class PluginOptions(object):
+@change_custom_plugin_paths_to_tuple
+@lru_cache(maxsize=1)
+def get_all_plugin_descriptors(custom_plugin_paths):
+    return [
+        PluginDescriptor.from_plugin_class(plugin, name)
+        for name, plugin in
+        import_plugins(custom_plugin_paths).items()
+    ]
 
-    _all_plugins = None
+
+class PluginOptions(object):
 
     def __init__(self, parser):
         self.parser = parser.add_argument_group(
@@ -395,23 +415,11 @@ class PluginOptions(object):
 
         return self
 
-    @classmethod
-    def get_all_plugins(cls, custom_plugin_paths):
-        if cls._all_plugins:
-            return cls._all_plugins
-
-        cls._all_plugins = [
-            PluginDescriptor.from_plugin_class(plugin, name)
-            for name, plugin in
-            import_plugins(custom_plugin_paths).items()
-        ]
-        return cls._all_plugins
-
     @staticmethod
     def get_disabled_plugins(args):
         return [
             plugin.classname
-            for plugin in PluginOptions.get_all_plugins(args.custom_plugin_paths)
+            for plugin in get_all_plugin_descriptors(args.custom_plugin_paths)
             if plugin.classname not in args.plugins
         ]
 
@@ -435,7 +443,7 @@ class PluginOptions(object):
         active_plugins = {}
         is_using_default_value = {}
 
-        for plugin in PluginOptions.get_all_plugins(args.custom_plugin_paths):
+        for plugin in get_all_plugin_descriptors(args.custom_plugin_paths):
             arg_name = PluginOptions._convert_flag_text_to_argument_name(
                 plugin.disable_flag_text,
             )
@@ -489,7 +497,7 @@ class PluginOptions(object):
         )
 
     def add_opt_out_options(self, custom_plugin_paths):
-        for plugin in self.get_all_plugins(custom_plugin_paths):
+        for plugin in get_all_plugin_descriptors(custom_plugin_paths):
             self.parser.add_argument(
                 plugin.disable_flag_text,
                 action='store_true',

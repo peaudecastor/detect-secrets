@@ -9,7 +9,7 @@ from detect_secrets.core.constants import VerifiedResult
 from detect_secrets.core.potential_secret import PotentialSecret
 
 
-# NOTE: In this whitepaper (Section V-D), it suggests that there's an
+# Note: In this whitepaper (Section V-D), it suggests that there's an
 #       80% chance of finding a multi-factor secret (e.g. username +
 #       password) within five lines of context, before and after a secret.
 #
@@ -128,7 +128,7 @@ class BasePlugin(object):
         :param filename:  string; name of file being analyzed
         :returns:         dictionary
 
-        NOTE: line_num and filename are used for PotentialSecret creation only.
+        Note: line_num and filename are used for PotentialSecret creation only.
         """
         if (
             any(
@@ -156,7 +156,7 @@ class BasePlugin(object):
         :param filename:  string; name of file being analyzed
         :returns:         dictionary
 
-        NOTE: line_num and filename are used for PotentialSecret creation only.
+        Note: line_num and filename are used for PotentialSecret creation only.
         """
         raise NotImplementedError
 
