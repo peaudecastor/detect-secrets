@@ -13,6 +13,10 @@ class AWSSSecretAccessKeyDetector(RegexBasedDetector):
     def analyze_string_content(self, string, line_num, filename):
         output = {}
 
+        # stupid false postive catch til rule gets smarter
+        if 'yarn.lock' in filename:
+            return output
+
         if 'aws' not in string and 'secret' not in string and 'access' not in string:
             return output
 
